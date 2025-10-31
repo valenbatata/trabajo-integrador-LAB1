@@ -13,31 +13,33 @@ class Cliente:
 
 
     def get_nombre(self):
-        return self.__nombre
+        return self.nombre
     
     def get_apellido(self):
-        return self.__apellido
+        return self.apellido
     
     def get_dni(self):
-        return self.__dni 
+        return self.dni 
        
     def get_email(self):
-        return self.__email 
-    
+        return self.email 
+
     def get_password(self):
-        return self.__password
+        return self.password
     
     def get_telefono(self):
-        return self.__telefono  
+        return self.telefono  
     
     def get_ciudad(self):
-        return self.__ciudad
+        return self.ciudad
     
     def get_pais(self):
-        return self.__pais
-    
-    def get_ciudad(self):
-        return self.__ciudad
+        return self.pais
     
 
-    
+    def mostrar_datos(self):
+        nombre = self.get_nombre()
+        apellido = self.get_apellido()
+        dni = self.get_dni()
+
+        return f"Cliente: {apellido}, {nombre}\nDNI: {dni}"
