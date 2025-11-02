@@ -1,4 +1,4 @@
-from cliente import Cliente
+from src.modelos.cliente import Cliente
 
 
 def test_mostrar_datos_formato_correcto():
