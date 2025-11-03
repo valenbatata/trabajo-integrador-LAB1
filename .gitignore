@@ -1,5 +1,7 @@
-# Ignorar carpetas de cache de Python
 __pycache__/
-
-# Ignorar archivos compilados de Python
 *.pyc
+
+.pytest_cache/
+
+venv/
+.env
