@@ -1,17 +1,12 @@
 from __future__ import annotations
 from .cliente import Cliente
+from .transaccion import Transaccion
+from datetime import datetime
 
 class Cuenta:
-    """
-    Clase base Cuenta.
-    Atributos privados:
-      - __numero_cuenta (str)
-      - __saldo (float)
-      - __cliente_asociado (Cliente)  # Asociación
-    Incluye getters solicitados.
-    """
 
     def __init__(self, numero_cuenta: str, cliente_asociado: Cliente, saldo_inicial: float = 0.0):
+
         # Validación número de cuenta (string no vacío)
         if not isinstance(numero_cuenta, str) or not numero_cuenta.strip():
             raise ValueError("El número de cuenta debe ser una cadena no vacía.")
@@ -30,6 +25,9 @@ class Cuenta:
         if saldo_inicial < 0:
             raise ValueError("El saldo inicial no puede ser negativo.")
         self.__saldo = saldo_inicial
+        
+    
+        self.__transacciones: list[Transaccion] = []
 
     # --------- GETTERS ---------
     def get_numero_cuenta(self) -> str:
@@ -41,28 +39,96 @@ class Cuenta:
     def get_cliente(self) -> Cliente:
         return self.__cliente_asociado
 
-    # --------- (Opcional) Métodos comunes para futuras tareas ---------
-    # Estos métodos no son parte estricta de tus tareas, pero ayudan a probar herencia después.
+    def get_transacciones(self) -> list[Transaccion]:
+        #Devuelve una copia de la lista de transacciones.
+        return self.__transacciones.copy()
+
+    # --------- MÉTODOS PÚBLICOS (Interfaz) ---------
+
+    def ingresar_dinero(self, monto: float) -> bool:
+
+        try:
+            # Dejamos la validación del monto y la actualización del saldo
+            self._depositar(monto)
+            
+            # Si depositar no lanzó error, registramos la transacción
+            nueva_tx = Transaccion(
+                tipo="depósito", 
+                monto=monto, 
+                fecha=datetime.now()
+            )
+            self.__transacciones.append(nueva_tx)
+            
+            # print(f"DEBUG: Depósito de ${monto:.2f} OK. Saldo: ${self.__saldo:.2f}")
+            return True
+
+        except ValueError as e:
+            # Capturamos errores de validación y mostramos mensaje
+            print(f"Error al ingresar dinero: {e}")
+            return False
+        except Exception as e:
+            # Captura genérica para otros posibles errores
+            print(f"Error inesperado al ingresar dinero: {e}")
+            return False
+
+    def retirar_dinero(self, monto: float) -> bool:
+
+        try:
+            # Dejamos la validación del monto y la actualización del saldo
+            self._retirar(monto)
+            
+            # Si retirar no lanzó error, registramos la transacción
+            nueva_tx = Transaccion(
+                    tipo="retiro", 
+                    monto=monto, 
+                    fecha=datetime.now()
+                )
+            self.__transacciones.append(nueva_tx)
+            
+                # print(f"DEBUG: Retiro de ${monto:.2f} OK. Saldo: ${self.__saldo:.2f}")
+            return True
+
+        except ValueError as e:
+                # Capturamos errores de validación y mostramos mensaje
+                print(f"Error al retirar dinero: {e}")
+                return False
+        except Exception as e:
+                # Captura genérica para otros posibles errores
+                print(f"Error inesperado al retirar dinero: {e}")
+                return False
+
+    # --------- MÉTODOS PROTEGIDOS (Implementación) ---------
+    
     def _depositar(self, monto: float) -> None:
+      
         try:
             monto = float(monto)
         except Exception as e:
             raise ValueError(f"Monto inválido: {e}") from e
+            
         if monto <= 0:
-            raise ValueError("El depósito debe ser mayor a 0.")
+            raise ValueError("El depósito debe ser un monto positivo.")
+            
         self.__saldo += monto
 
     def _retirar(self, monto: float) -> None:
+        
+        # Lógica interna de retiro. Valida y actualiza el saldo.
+        
         try:
             monto = float(monto)
         except Exception as e:
             raise ValueError(f"Monto inválido: {e}") from e
+            
         if monto <= 0:
-            raise ValueError("El retiro debe ser mayor a 0.")
-        # La política de sobregiro se define en subclases (polimorfismo)
+            raise ValueError("El retiro debe ser un monto positivo.")
+            
+        # Validación de saldo suficiente 
         if monto > self.__saldo:
-            raise ValueError("Fondos insuficientes en cuenta base.")
+            raise ValueError("Fondos insuficientes.")
+            
         self.__saldo -= monto
 
     def __repr__(self) -> str:
-        return f"Cuenta({self.__numero_cuenta!r}, saldo={self.__saldo:.2f}, cliente={self.__cliente_asociado!r})"
+     
+        return f"Cuenta({self.__numero_cuenta!r}, saldo={self.__saldo:.2f}, cliente={self.__cliente_asociado.get_apellido()!r})"

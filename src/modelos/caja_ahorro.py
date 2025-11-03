@@ -1,10 +1,6 @@
 from .cuenta import Cuenta
 
 class CajaDeAhorro(Cuenta):
-    """
-    Caja de Ahorro: NO permite saldo negativo.
-    Hereda de Cuenta y reutiliza _depositar/_retirar.
-    """
 
     def __init__(self, numero_cuenta: str, cliente_asociado, saldo_inicial: float = 0.0):
         super().__init__(numero_cuenta, cliente_asociado, saldo_inicial)
