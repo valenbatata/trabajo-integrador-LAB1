@@ -1,12 +1,13 @@
 import flet as ft
 from src.modelos.cliente import Cliente
 from src.modelos.cuenta import Cuenta
-from src.modelos.caja_ahorro import CajaAhorro # <-- 1. ¡NUEVA IMPORTACIÓN!
+from src.modelos.caja_ahorro import CajaAhorro
 import random
+from fpdf import FPDF 
+from datetime import datetime 
 
 # --- Almacenamiento en memoria ---
 banco_clientes: list[Cliente] = []
-# Esta lista ahora puede guardar Cuentas Y CajasDeAhorro (Polimorfismo)
 banco_cuentas: list[Cuenta | CajaAhorro] = [] 
 
 # --- Variable Global Temporal ---
@@ -25,7 +26,6 @@ def main(page: ft.Page):
     txt_apellido = ft.TextField(label="Apellido", width=350)
     txt_dni = ft.TextField(label="DNI (sin puntos)", width=350)
     
-    # --- 2. ¡NUEVO COMPONENTE DROPDOWN! ---
     dd_tipo_cuenta = ft.Dropdown(
         label="Tipo de Cuenta",
         width=350,
@@ -33,9 +33,8 @@ def main(page: ft.Page):
             ft.dropdown.Option(key="CajaAhorro", text="Caja de Ahorro (con 2% interés)"),
             ft.dropdown.Option(key="Cuenta", text="Cuenta Corriente (base)"),
         ],
-        value="CajaAhorro" # Valor por defecto
+        value="CajaAhorro" 
     )
-    # --- Fin del nuevo componente ---
     
     btn_crear = ft.Button(text="Crear Cliente", icon=ft.Icons.PERSON_ADD, width=350)
 
@@ -45,7 +44,7 @@ def main(page: ft.Page):
             txt_nombre,
             txt_apellido,
             txt_dni,
-            dd_tipo_cuenta, # <-- ¡LO AÑADIMOS AL FORMULARIO!
+            dd_tipo_cuenta,
             btn_crear
         ],
         visible=True,
@@ -56,7 +55,6 @@ def main(page: ft.Page):
 
 
     # --- 2. VISTA DE DATOS DE LA CUENTA (Resultado) ---
-    # (Esta vista no necesita cambios, ¡funciona gracias al Polimorfismo!)
     txt_titulo_cuenta = ft.Text("¡Cuenta Creada Exitosamente!", style=ft.TextThemeStyle.HEADLINE_MEDIUM, color=ft.Colors.GREEN_700)
     txt_numero_cuenta = ft.Text(size=16)
     txt_cliente_asociado = ft.Text(size=16)
@@ -65,6 +63,16 @@ def main(page: ft.Page):
     txt_transaccion_status = ft.Text(value="", visible=False, color=ft.Colors.BLUE_700) 
     btn_depositar = ft.Button(text="Depositar", icon=ft.Icons.ADD, width=170)
     btn_retirar = ft.Button(text="Retirar", icon=ft.Icons.REMOVE, width=170)
+    
+    # --- ¡NUEVO BOTÓN PDF! ---
+    btn_imprimir_pdf = ft.Button(
+        text="Imprimir PDF", 
+        icon=ft.Icons.PICTURE_AS_PDF, 
+        width=350,
+        bgcolor=ft.Colors.BLUE_GREY_100
+    )
+    # --- Fin nuevo botón ---
+    
     btn_volver = ft.Button("Crear otro cliente", icon=ft.Icons.ARROW_BACK, width=350)
 
     vista_cuenta = ft.Column(
@@ -76,7 +84,9 @@ def main(page: ft.Page):
             txt_monto,
             ft.Row(controls=[btn_depositar, btn_retirar], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
             txt_transaccion_status, 
-            ft.Divider(), btn_volver
+            ft.Divider(),
+            btn_imprimir_pdf, # <-- ¡BOTÓN AÑADIDO A LA VISTA!
+            btn_volver
         ],
         visible=False,
         alignment=ft.MainAxisAlignment.START,
@@ -96,7 +106,7 @@ def main(page: ft.Page):
             txt_saldo.value = f"Saldo: ${cuenta_activa_actual.get_saldo():.2f}"
         page.update()
 
-    def mostrar_vista_cuenta(cuenta: Cuenta | CajaAhorro): # Acepta ambos tipos
+    def mostrar_vista_cuenta(cuenta: Cuenta | CajaAhorro): 
         global cuenta_activa_actual
         cuenta_activa_actual = cuenta 
 
@@ -104,7 +114,6 @@ def main(page: ft.Page):
         cliente = cuenta.get_cliente()
         txt_cliente_asociado.value = f"Cliente: {cliente.get_apellido()}, {cliente.get_nombre()}"
         
-        # Mostramos un texto extra si es una Caja de Ahorro
         if isinstance(cuenta, CajaAhorro):
              txt_titulo_cuenta.value = f"¡Caja de Ahorro Creada!"
              txt_cliente_asociado.value += f" (Interés: {cuenta.get_interes()*100}%)"
@@ -130,7 +139,6 @@ def main(page: ft.Page):
         page.update()
 
     def btn_depositar_click(e):
-        # (Esta función no necesita cambios)
         if not cuenta_activa_actual: return
         try:
             monto_float = float(txt_monto.value)
@@ -149,17 +157,13 @@ def main(page: ft.Page):
 
 
     def btn_retirar_click(e):
-        # (Esta función no necesita cambios)
         if not cuenta_activa_actual: return
         try:
             monto_float = float(txt_monto.value)
             
-            # Asumimos que tienes un método público 'retirar_dinero' en Cuenta
-            # y que CajaAhorro lo hereda o lo sobrescribe.
             if hasattr(cuenta_activa_actual, 'retirar_dinero'):
                 exito = cuenta_activa_actual.retirar_dinero(monto_float)
             else:
-                # Plan B: usar el método protegido
                 print("ADVERTENCIA: Usando _retirar. Crea 'retirar_dinero' público.")
                 cuenta_activa_actual._retirar(monto_float) 
                 exito = True 
@@ -176,12 +180,95 @@ def main(page: ft.Page):
             txt_transaccion_status.visible = True
         page.update()
 
+    # --- ¡NUEVA FUNCIÓN PARA PDF! ---
+    def btn_imprimir_pdf_click(e):
+        if not cuenta_activa_actual:
+            mostrar_error("No hay cuenta activa para imprimir.")
+            return
+
+        try:
+            cuenta = cuenta_activa_actual
+            cliente = cuenta.get_cliente()
+            
+            pdf = FPDF()
+            pdf.add_page()
+            
+            # Título
+            pdf.set_font("Arial", 'B', 16)
+            pdf.cell(0, 10, 'Reporte de Cuenta Bancaria', 0, 1, 'C')
+            pdf.ln(10) # Salto de línea
+
+            # --- Datos del Cliente ---
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(0, 10, 'Datos del Cliente', 0, 1)
+            pdf.set_font("Arial", '', 12)
+            pdf.cell(0, 8, f"Cliente: {cliente.get_apellido()}, {cliente.get_nombre()}", 0, 1)
+            pdf.cell(0, 8, f"DNI: {cliente.get_dni()}", 0, 1)
+            pdf.ln(5)
+
+            # --- Datos de la Cuenta ---
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(0, 10, 'Datos de la Cuenta', 0, 1)
+            pdf.set_font("Arial", '', 12)
+            pdf.cell(0, 8, f"Numero de Cuenta: {cuenta.get_numero_cuenta()}", 0, 1)
+            if isinstance(cuenta, CajaAhorro):
+                pdf.cell(0, 8, f"Tipo: Caja de Ahorro (Interes: {cuenta.get_interes()*100}%)", 0, 1)
+            else:
+                pdf.cell(0, 8, "Tipo: Cuenta Corriente", 0, 1)
+            
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(0, 10, f"Saldo Actual: ${cuenta.get_saldo():.2f}", 0, 1)
+            pdf.ln(10)
+
+            # --- Historial de Transacciones ---
+            pdf.set_font("Arial", 'B', 12)
+            pdf.cell(0, 10, 'Historial de Transacciones', 0, 1)
+            pdf.set_font("Arial", '', 10)
+            
+            transacciones = cuenta.get_transacciones()
+            if not transacciones:
+                pdf.cell(0, 8, "No hay transacciones registradas.", 0, 1)
+            else:
+                # Encabezados de la tabla
+                pdf.set_fill_color(230, 230, 230)
+                pdf.cell(50, 8, "Fecha", 1, 0, 'C', True)
+                pdf.cell(40, 8, "Tipo", 1, 0, 'C', True)
+                pdf.cell(40, 8, "Monto", 1, 1, 'C', True)
+                
+                # Datos
+                for tx in transacciones:
+                    fecha_str = tx.get_fecha().strftime("%Y-%m-%d %H:%M")
+                    monto_str = f"${tx.get_monto():.2f}"
+                    tipo_str = tx.get_tipo().capitalize()
+                    
+                    pdf.cell(50, 8, fecha_str, 1)
+                    pdf.cell(40, 8, tipo_str, 1)
+                    pdf.cell(40, 8, monto_str, 1, 1, 'R') # Alineado a la derecha
+            
+            # Guardar el PDF
+            nombre_archivo = f"reporte_{cliente.get_dni()}_{cuenta.get_numero_cuenta()}.pdf"
+            pdf.output(nombre_archivo)
+            
+            print(f"DEBUG: PDF generado: {nombre_archivo}")
+            txt_transaccion_status.value = f"PDF '{nombre_archivo}' guardado."
+            txt_transaccion_status.color = ft.Colors.BLUE_800
+            txt_transaccion_status.visible = True
+
+        except Exception as ex:
+            print(f"Error al generar PDF: {ex}")
+            mostrar_error(f"Error inesperado al generar PDF: {ex}")
+        
+        page.update()
+
+    # --- Fin función PDF ---
+
+
     def btn_crear_cliente_click(e):
         try:
             nombre = txt_nombre.value
             apellido = txt_apellido.value
             dni = txt_dni.value
-            tipo_cuenta_seleccionado = dd_tipo_cuenta.value # <-- ¡LEEMOS EL DROPDOWN!
+            tipo_cuenta_seleccionado = dd_tipo_cuenta.value 
 
             if not nombre or not apellido or not dni or not tipo_cuenta_seleccionado:
                 raise ValueError("Todos los campos son obligatorios.")
@@ -189,28 +276,24 @@ def main(page: ft.Page):
             nuevo_cliente = Cliente(nombre=nombre, apellido=apellido, dni=dni)
             num_cuenta = f"CTA-{random.randint(10000, 99999)}" 
             
-            # --- 3. ¡LÓGICA DE HERENCIA! ---
-            nueva_cuenta: Cuenta | CajaAhorro # Definimos el tipo
+            nueva_cuenta: Cuenta | CajaAhorro
             
             if tipo_cuenta_seleccionado == "CajaAhorro":
                 nueva_cuenta = CajaAhorro(
                     numero_cuenta=num_cuenta,
                     cliente_asociado=nuevo_cliente,
                     saldo_inicial=0.0
-                    # (Usará el interés por defecto de 0.02)
                 )
-            else: # Si es "Cuenta"
+            else: 
                 nueva_cuenta = Cuenta(
                     numero_cuenta=num_cuenta,
                     cliente_asociado=nuevo_cliente,
                     saldo_inicial=0.0
                 )
-            # --- Fin de la lógica ---
 
             banco_clientes.append(nuevo_cliente)
             banco_cuentas.append(nueva_cuenta)
 
-            # ¡Funciona para ambos tipos gracias al Polimorfismo!
             mostrar_vista_cuenta(nueva_cuenta) 
             
             print(f"DEBUG: Cliente creado: {nuevo_cliente}")
@@ -230,6 +313,7 @@ def main(page: ft.Page):
     btn_volver.on_click = volver_al_inicio
     btn_depositar.on_click = btn_depositar_click
     btn_retirar.on_click = btn_retirar_click
+    btn_imprimir_pdf.on_click = btn_imprimir_pdf_click # <-- ¡CONEXIÓN DEL NUEVO BOTÓN!
 
     # --- Carga de la Página ---
     page.add(
