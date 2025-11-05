@@ -48,7 +48,7 @@ class Cuenta:
     def ingresar_dinero(self, monto: float) -> bool:
 
         try:
-            # Dejamos la validación del monto y la actualización del saldo
+            # validación del monto y la actualización del saldo
             self._depositar(monto)
             
             # Si depositar no lanzó error, registramos la transacción
@@ -59,7 +59,6 @@ class Cuenta:
             )
             self.__transacciones.append(nueva_tx)
             
-            # print(f"DEBUG: Depósito de ${monto:.2f} OK. Saldo: ${self.__saldo:.2f}")
             return True
 
         except ValueError as e:
@@ -85,7 +84,6 @@ class Cuenta:
                 )
             self.__transacciones.append(nueva_tx)
             
-                # print(f"DEBUG: Retiro de ${monto:.2f} OK. Saldo: ${self.__saldo:.2f}")
             return True
 
         except ValueError as e:
@@ -99,7 +97,7 @@ class Cuenta:
 
     # --------- MÉTODOS PROTEGIDOS (Implementación) ---------
     
-    def _depositar(self, monto: float) -> None:
+    def _depositar(self, monto: float) -> None: #NONE: el método realiza una acción pero no devuelve valor.
       
         try:
             monto = float(monto)
@@ -129,6 +127,8 @@ class Cuenta:
             
         self.__saldo -= monto
 
-    def __repr__(self) -> str:
-     
+    def __repr__(self) -> str: #Representación para debugging.
+       
+        # - !r (ej. {self.__numero_cuenta!r}): Añade comillas al string (repr()).
+        # - :.2f (ej. {self.__saldo:.2f}): Formatea el 'float' a 2 decimales.
         return f"Cuenta({self.__numero_cuenta!r}, saldo={self.__saldo:.2f}, cliente={self.__cliente_asociado.get_apellido()!r})"

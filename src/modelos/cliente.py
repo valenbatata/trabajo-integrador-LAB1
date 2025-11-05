@@ -9,7 +9,7 @@ class Cliente:
                 if not all(c.isalpha() or c.isspace() for c in nombre_limpio):
                          raise ValueError("El nombre debe contener solo letras y espacios.")
         
-                # Requisito: Atributos privados 
+                # Atributos privados 
                 self.__nombre = nombre_limpio
 
                 # --- Validación Apellido (Letras y espacios) ---
@@ -48,5 +48,5 @@ class Cliente:
                 return f"Cliente: {self.__apellido.upper()}, {self.__nombre}\nDNI: {self.__dni}"
 
         def __repr__(self) -> str:
-                """Representación textual de la instancia para debugging."""
+               
                 return f"Cliente(nombre={self.__nombre!r}, apellido={self.__apellido!r}, dni={self.__dni!r})"

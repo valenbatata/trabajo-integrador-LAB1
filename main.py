@@ -2,25 +2,24 @@ import flet as ft
 from src.modelos.cliente import Cliente
 from src.modelos.cuenta import Cuenta
 from src.modelos.caja_ahorro import CajaAhorro
-import random
+import random #crea los IDS de las cuentas de usuario
 from fpdf import FPDF 
 from datetime import datetime 
 
-# --- Almacenamiento en memoria ---
+# --- arregos de memoria ---
 banco_clientes: list[Cliente] = []
 banco_cuentas: list[Cuenta | CajaAhorro] = [] 
 
-# --- Variable Global Temporal ---
+"""Usamos esta variable para "recordar" la instancia de la cuenta (sea `Cuenta` o `CajaAhorro`) que el usuario está viendo y operando activamente"""
 cuenta_activa_actual: Cuenta | CajaAhorro | None = None
 
 def main(page: ft.Page):
-    """Función principal que define la UI y la lógica de la aplicación Flet."""
-    
+    #--- Configuración de la Página ---
     page.title = "Sistema Bancario - DevOps 1er Año"
     page.vertical_alignment = ft.MainAxisAlignment.START
     page.horizontal_alignment = ft.CrossAxisAlignment.CENTER
 
-    # --- 1. VISTA DE CREACIÓN DE CLIENTE (Formulario) ---
+    # --- FORMULARIO ---
     txt_titulo_crear = ft.Text("Crear Nuevo Cliente y Cuenta", style=ft.TextThemeStyle.HEADLINE_MEDIUM)
     txt_nombre = ft.TextField(label="Nombre", width=350)
     txt_apellido = ft.TextField(label="Apellido", width=350)
@@ -37,7 +36,8 @@ def main(page: ft.Page):
     )
     
     btn_crear = ft.Button(text="Crear Cliente", icon=ft.Icons.PERSON_ADD, width=350)
-
+    
+    #Estilo del formulario
     vista_formulario = ft.Column(
         controls=[
             txt_titulo_crear,
@@ -53,8 +53,7 @@ def main(page: ft.Page):
         spacing=15
     )
 
-
-    # --- 2. VISTA DE DATOS DE LA CUENTA (Resultado) ---
+    # --- VISTA DE LA CUENTA ---
     txt_titulo_cuenta = ft.Text("¡Cuenta Creada Exitosamente!", style=ft.TextThemeStyle.HEADLINE_MEDIUM, color=ft.Colors.GREEN_700)
     txt_numero_cuenta = ft.Text(size=16)
     txt_cliente_asociado = ft.Text(size=16)
@@ -64,14 +63,14 @@ def main(page: ft.Page):
     btn_depositar = ft.Button(text="Depositar", icon=ft.Icons.ADD, width=170)
     btn_retirar = ft.Button(text="Retirar", icon=ft.Icons.REMOVE, width=170)
     
-    # --- ¡NUEVO BOTÓN PDF! ---
+    # --- BOTÓN PDF ---
     btn_imprimir_pdf = ft.Button(
         text="Imprimir PDF", 
         icon=ft.Icons.PICTURE_AS_PDF, 
         width=350,
-        bgcolor=ft.Colors.BLUE_GREY_100
+        bgcolor=ft.Colors.GREEN_700
     )
-    # --- Fin nuevo botón ---
+   
     
     btn_volver = ft.Button("Crear otro cliente", icon=ft.Icons.ARROW_BACK, width=350)
 
@@ -85,7 +84,7 @@ def main(page: ft.Page):
             ft.Row(controls=[btn_depositar, btn_retirar], alignment=ft.MainAxisAlignment.CENTER, spacing=10),
             txt_transaccion_status, 
             ft.Divider(),
-            btn_imprimir_pdf, # <-- ¡BOTÓN AÑADIDO A LA VISTA!
+            btn_imprimir_pdf, 
             btn_volver
         ],
         visible=False,
@@ -95,9 +94,8 @@ def main(page: ft.Page):
     )
 
     # --- Lógica de Eventos ---
-
     def mostrar_error(mensaje: str):
-        page.snack_bar = ft.SnackBar(content=ft.Text(mensaje), bgcolor=ft.Colors.RED_700)
+        page.snack_bar = ft.SnackBar(content=ft.Text("debe ingresar un monto"), bgcolor=ft.Colors.RED_700)
         page.snack_bar.open = True
         page.update()
 
@@ -107,14 +105,14 @@ def main(page: ft.Page):
         page.update()
 
     def mostrar_vista_cuenta(cuenta: Cuenta | CajaAhorro): 
-        global cuenta_activa_actual
+        global cuenta_activa_actual # permite modificar la variable de memoria
         cuenta_activa_actual = cuenta 
 
         txt_numero_cuenta.value = f"N° de Cuenta: {cuenta.get_numero_cuenta()}"
         cliente = cuenta.get_cliente()
         txt_cliente_asociado.value = f"Cliente: {cliente.get_apellido()}, {cliente.get_nombre()}"
         
-        if isinstance(cuenta, CajaAhorro):
+        if isinstance(cuenta, CajaAhorro): #insistance pregunta si es tipo caja de ahorro
              txt_titulo_cuenta.value = f"¡Caja de Ahorro Creada!"
              txt_cliente_asociado.value += f" (Interés: {cuenta.get_interes()*100}%)"
         else:
@@ -139,7 +137,7 @@ def main(page: ft.Page):
         page.update()
 
     def btn_depositar_click(e):
-        if not cuenta_activa_actual: return
+        if not cuenta_activa_actual: return #si la variable está vacia return detiene la función
         try:
             monto_float = float(txt_monto.value)
             exito = cuenta_activa_actual.ingresar_dinero(monto_float)
@@ -161,7 +159,7 @@ def main(page: ft.Page):
         try:
             monto_float = float(txt_monto.value)
             
-            if hasattr(cuenta_activa_actual, 'retirar_dinero'):
+            if hasattr(cuenta_activa_actual, 'retirar_dinero'): # "has attribute" (o "tiene un atributo"
                 exito = cuenta_activa_actual.retirar_dinero(monto_float)
             else:
                 print("ADVERTENCIA: Usando _retirar. Crea 'retirar_dinero' público.")
@@ -180,7 +178,7 @@ def main(page: ft.Page):
             txt_transaccion_status.visible = True
         page.update()
 
-    # --- ¡NUEVA FUNCIÓN PARA PDF! ---
+    # --- FUNCIÓN PARA PDF ---
     def btn_imprimir_pdf_click(e):
         if not cuenta_activa_actual:
             mostrar_error("No hay cuenta activa para imprimir.")
@@ -236,7 +234,7 @@ def main(page: ft.Page):
                 pdf.cell(40, 8, "Monto", 1, 1, 'C', True)
                 
                 # Datos
-                for tx in transacciones:
+                for tx in transacciones: #tx nombre de variable temporal
                     fecha_str = tx.get_fecha().strftime("%Y-%m-%d %H:%M")
                     monto_str = f"${tx.get_monto():.2f}"
                     tipo_str = tx.get_tipo().capitalize()
@@ -260,8 +258,8 @@ def main(page: ft.Page):
         
         page.update()
 
-    # --- Fin función PDF ---
 
+    # --- FUNCIÓN PARA CREAR CLIENTE ---
 
     def btn_crear_cliente_click(e):
         try:
@@ -313,7 +311,7 @@ def main(page: ft.Page):
     btn_volver.on_click = volver_al_inicio
     btn_depositar.on_click = btn_depositar_click
     btn_retirar.on_click = btn_retirar_click
-    btn_imprimir_pdf.on_click = btn_imprimir_pdf_click # <-- ¡CONEXIÓN DEL NUEVO BOTÓN!
+    btn_imprimir_pdf.on_click = btn_imprimir_pdf_click 
 
     # --- Carga de la Página ---
     page.add(
